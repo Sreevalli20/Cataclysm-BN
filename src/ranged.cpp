@@ -1279,8 +1279,18 @@ static int calc_gun_volume( const item &gun )
     if( suppressed ) {
         // Speed of sound in atmosphere @ seat level is 343 m/s
         if( speed < 344 ) {
-            // We are suppressed and subsonic. Cap to 45 to ensure quiet firearms go "plink" instead of "bang".
-            noise = std::min( 45, noise - 15 );
+            // We are suppressed and subsonic. Only cap to 45 if the gun is genuinely quiet.
+            // Check if total noise (ammo + gun + suppressor) is below threshold.
+            // Threshold of 95 ensures that after -15 penalty, result is < 80 (below "bang" threshold of 120).
+            // This ensures quiet .22 firearms get "plink" while louder subsonic calibers still get "bang".
+            // Example: .22 ratshot (140) + rifle (-4) + suppressor (-45) = 91, which is < 95, so cap to 45 → "plink"
+            // Example: .22 ratshot (140) + rifle (-4) + crafted suppressor (-30) = 106, which is ≥ 95, so no cap → "bang"
+            // Example: 9mm (159) + pistol (0) + suppressor (-45) = 114, which is ≥ 95, so no cap → "bang"
+            if( noise < 95 ) {
+                noise = std::min( 45, noise - 15 );
+            } else {
+                noise = noise - 15;
+            }
         } else {
             // We are suppressed but still super sonic. Cap our volume to 120.
             noise = std::min( 120, noise );
